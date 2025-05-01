@@ -3,15 +3,15 @@
 1. Use the pydantic library to rewrite the Network and Circuit objects from scikit-rf library into Pydantic models so that they can be easily serialized/deserialized as JSON or other formats (like YAML). This will make it easier to work with these objects in Python scripts.
 3. Based on the schema, we can convert the Json file to Python objects so that I can use scikit-rf library to do the other calculations.
 
-## 核心功能
+## Core Features
 
-### 网络参数支持
-- S参数矩阵转换
-- 阻抗参数(z0)处理
-- 多端口网络验证
+### Network Parameter Support
+- S-parameter matrix conversion
+- Impedance parameter (z0) handling
+- Multi-port network validation
 
-### 变更历史
-2023-05-01：移除实验性噪声参数支持，优化基础转换逻辑稳定性
+### Change History
+2023-05-01：Remove experimental noise parameter support, optimize basic conversion logic stability
 
 ## Enhanced Data Validation on Initialization
 - Validates length parity of `frequency`, `s_parameters`, and `z0`.
