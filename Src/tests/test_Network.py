@@ -106,5 +106,15 @@ def test_cascade_networks():
     assert len(cascaded.z0) == len(cascaded.frequency)
     assert len(cascaded.z0[0]) == 2
 
+def test_cascaded_network():
+    ntw1 = rf.Network()
+    ntw2 = rf.Network()
+    model1 = Network.from_network(ntw1)
+    model2 = Network.from_network(ntw2)
+    cascaded = model1.cascade(model2)
+    assert cascaded.nports == 2
+    assert len(cascaded.z0) == len(cascaded.frequency)
+    assert len(cascaded.z0[0]) == 2
+
 if __name__=="__main__":
     test_all_touchstone_files()

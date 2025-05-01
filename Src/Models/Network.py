@@ -1,7 +1,7 @@
 from pydantic.v1 import BaseModel, Field, validator
 import skrf as rf
 import numpy as np
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 class Network(BaseModel):
     frequency: List[float] = Field(
@@ -28,6 +28,11 @@ class Network(BaseModel):
         ...,
         description="Number of ports in the network",
         example=2
+    )
+    comments: Optional[List[str]] = Field(
+        None,
+        description="User comments about the network",
+        example=["Measured 2023-05-01", "Calibrated with TRL"]
     )
 
     class Config:
@@ -100,7 +105,8 @@ class Network(BaseModel):
             s_parameters=s_parameters,
             z0=z0,
             name=network.name,
-            nports=network.nports
+            nports=network.nports,
+            comments=list(network.comments) if network.comments is not None else None
         )
 
     @classmethod
@@ -116,6 +122,7 @@ class Network(BaseModel):
         ])
         z0 = np.array([[complex(real, imag) for real, imag in inner] for inner in self.z0])
         network = rf.Network(frequency=freq, s=s, z0=z0, name=self.name)
+        network.comments = self.comments
         return network
 
     @classmethod
