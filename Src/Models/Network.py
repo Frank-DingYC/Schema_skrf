@@ -129,17 +129,6 @@ class Network(BaseModel):
     def from_json(cls, json_data: Dict) -> 'Network':
         return cls(**json_data)
 
-    @classmethod
-    def cascade(cls, network1: 'Network', network2: 'Network') -> 'Network':
-        skrf_network1 = network1.to_network()
-        skrf_network2 = network2.to_network()
-        if not np.array_equal(skrf_network1.f, skrf_network2.f):
-            freq = rf.Frequency.from_f(np.union1d(skrf_network1.f, skrf_network2.f), unit='Hz')
-            skrf_network1 = fit_frequency(skrf_network1, freq)
-            skrf_network2 = fit_frequency(skrf_network2, freq)
-        cascaded_skrf = rf.cascade(skrf_network1, skrf_network2)
-        return cls.from_network(cascaded_skrf)
-
 def interpolate_z0(z0: np.ndarray, source_freq: rf.Frequency, target_freq: rf.Frequency) -> np.ndarray:
     z0_interp = np.zeros((len(target_freq.f), z0.shape[1]), dtype=complex)
     for port in range(z0.shape[1]):
