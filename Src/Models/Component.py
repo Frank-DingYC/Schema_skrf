@@ -1,3 +1,4 @@
+from numbers import Complex
 from pydantic.v1 import BaseModel, Field, validator
 from typing import List, Literal, Union, Optional, Any
 import skrf as rf
@@ -9,10 +10,10 @@ class AbstractMedia(BaseModel):
         description="Frequency points in Hz",
         example=[1e9, 2e9, 3e9]
     )
-    z0: List[List[float]] = Field(
+    z0: List[float] = Field(
         ...,
-        description="Impedance for each port at each frequency (n_freqs x n_ports, [real, imag])",
-        example=[[[50.0, 0.0], [50.0, 0.0]], [[50.0, 0.0], [50.0, 0.0]], [[50.0, 0.0], [50.0, 0.0]]]
+        description="Impedance for each port [real, imag])",
+        example=[50.0, 0.0]
     )
     type: str = Field(
         ...,
@@ -35,8 +36,7 @@ class R(AbstractMedia):
 
     def to_r(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         return line.resistor(self.r)
 
 class L(AbstractMedia):
@@ -64,8 +64,7 @@ class L(AbstractMedia):
 
     def to_l(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         if self.f_0 is None and self.q_factor is None:
             return line.inductor(self.l)
         elif self.f_0 is not None and self.q_factor is not None:
@@ -101,8 +100,7 @@ class C(AbstractMedia):
 
     def to_c(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         if self.f_0 is None and self.q_factor is None:
             return line.capacitor(self.c)
         elif self.f_0 is not None and self.q_factor is not None:
@@ -126,8 +124,7 @@ class G(AbstractMedia):
 
     def to_g(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         return line.shunt_resistor(self.g)
 
 RLGC = Union[R, L, G, C]
@@ -157,8 +154,7 @@ class Attenuator(AbstractMedia):
 
     def to_attenuator(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         return line.attenuator(self.s21, self.db, self.d, self.unit)
 
 class Isolator(AbstractMedia):
@@ -174,8 +170,7 @@ class Isolator(AbstractMedia):
     
     def to_isolator(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         if self.source_port not in [0, 1]:
             raise ValueError("source_port must be 0 or 1")
         return line.isolator(self.source_port)
@@ -193,8 +188,7 @@ class Splitter(AbstractMedia):
     )    
     def to_splitter(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         return line.splitter(self.nports)
 
 class Coupler(AbstractMedia):
@@ -232,8 +226,7 @@ class Coupler(AbstractMedia):
     
     def to_coupler(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        line = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        line = rf.media.DefinedGammaZ0(frequency=frequency, z0=complex(self.z0[0], self.z0[1]))
         coupler = device.MatchedSymmetricCoupler.from_dbdeg(db=self.db, deg=self.deg, media=line)
         return coupler.ntwk
     
@@ -252,10 +245,10 @@ class Port(AbstractMedia):
 
     def to_port(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
-        port = media.match(name=self.name)
-        port._ext_attrs={'_is_circuit_port': True}
+        port = rf.Circuit.Port(frequency=frequency, z0=complex(self.z0[0], self.z0[1]), name=self.name)
+        # media = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        # port = media.match(name=self.name)
+        # port._ext_attrs={'_is_circuit_port': True}
         return port
 
 class Ground(AbstractMedia):
@@ -271,10 +264,10 @@ class Ground(AbstractMedia):
     
     def to_ground(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
-        gnd = media.short(name=self.name)
-        gnd._ext_attrs={'_is_circuit_ground': True}
+        gnd = rf.Circuit.Ground(frequency=frequency, z0=complex(self.z0[0], self.z0[1]), name=self.name)
+        # media = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        # gnd = media.short(name=self.name)
+        # gnd._ext_attrs={'_is_circuit_ground': True}
         return gnd
 
 class Open(AbstractMedia):
@@ -290,10 +283,10 @@ class Open(AbstractMedia):
     
     def to_open(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        z0 = [complex(real, imag) for real, imag in self.z0]
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
-        open = media.open(name=self.name)
-        open._ext_attrs={'_is_circuit_open': True}
+        open = rf.Circuit.Open(frequency=frequency, z0=complex(self.z0[0], self.z0[1]), name=self.name)
+        # media = rf.media.DefinedGammaZ0(frequency=frequency, z0_port=z0)
+        # open = media.open(name=self.name)
+        # open._ext_attrs={'_is_circuit_open': True}
         return open
 
 SimComponent = Union[Port, Ground, Open]

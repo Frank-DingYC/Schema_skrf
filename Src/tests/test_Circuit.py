@@ -11,7 +11,7 @@ def base_params():
     """Common parameters for testing"""
     return {
         'frequency': [1e9, 1.1e9, 1.2e9],
-        'z0': [[50.0, 0.0], [50.0, 0.0], [50.0, 0.0]]
+        'z0': [50.0, 0.0]
     }
 
 @pytest.fixture
@@ -158,14 +158,12 @@ class TestCircuit:
         # Verify network types and attributes
         for net in rf_circuit.networks_list:
             if net.name == 'port1':
-                assert getattr(net, '_ext_attrs', {}).get('_is_circuit_port') is True
-                assert net.s.shape == (3, 1, 1)  # 3 frequency points, 1-port
+                assert net._is_circuit_port is True
+                assert net.s.shape == (3, 1, 1)
             elif net.name == 'ground1':
-                assert getattr(net, '_ext_attrs', {}).get('_is_circuit_ground') is True
-                assert net.s.shape == (3, 1, 1)
+                assert net.s.shape == (3, 2, 2)
             elif net.name == 'open1':
-                assert getattr(net, '_ext_attrs', {}).get('_is_circuit_open') is True
-                assert net.s.shape == (3, 1, 1)
+                assert net.s.shape == (3, 2, 2)
 
     def test_mixed_component_types(self, base_params):
         """Test circuit with mixed component types (RLGC, Microwave, SimComponent)"""

@@ -7,17 +7,18 @@ import numpy as np
 def base_params():
     return {
         'frequency': list(np.linspace(1e9, 2e9, 100)),
-        'z0': [[50.0, 0.0]]*100,
+        'z0': [50.0, 0.0],
     }
 
 class TestR:
+    """Test Resistor component"""
     def test_r_creation(self, base_params):
         r_model = R(r=100.0, **base_params)
         assert isinstance(r_model.to_r(), rf.Network)
 
 
 class TestL:
-
+    """Test Inductor component"""
     @pytest.mark.parametrize('params', [
         {'l': 1e-9},
         {'l': 1e-9, 'f_0': 1e9, 'q_factor': 10},
@@ -38,13 +39,14 @@ class TestL:
             l_model.to_l()
 
 class TestG:
+    """Test Conductance component"""
     def test_g_creation(self, base_params):
         g_model = G(g=1e-9, **base_params)
         network = g_model.to_g()
         assert isinstance(network, rf.Network)
 
 class TestC:
-
+    """Test Capacitor component"""
     @pytest.mark.parametrize('params', [
         {'c': 1e-12},
         {'c': 1e-12, 'f_0': 1e9, 'q_factor': 10},
@@ -65,6 +67,7 @@ class TestC:
             c_model.to_c()
 
 class TestAttenuator:
+    """Test Attenuator component"""
     @pytest.mark.parametrize('params', [
         {'s21': -3},
         {'s21': 0.5, 'db': False},
@@ -95,6 +98,7 @@ class TestIsolator:
             iso.to_isolator()
 
 class TestSplitter:
+    """Test Splitter component"""
     @pytest.mark.parametrize('nports', [3, 4])
     def test_splitter_ports(self, base_params, nports):
         """Validate splitter S-parameters using theoretical formula:
@@ -110,28 +114,28 @@ class TestSplitter:
         assert network.s.shape == (len(base_params['frequency']), nports, nports)
         
         # Extract real part of Z0 (assuming lossless)
-        z0 = [complex(z[0], z[1]) for z in splitter.z0]
+        z0 =[complex(splitter.z0[0], splitter.z0[1])] * nports
         
         # Theoretical calculations
-        for freq_idx in range(len(base_params['frequency'])):
-            s_matrix = network.s[freq_idx]
-            z0_sum = 1/z0[freq_idx] * nports
+        s_matrix = network.s
+        z0_sum = 1/z0[0] * nports
             
-            # Verify off-diagonal elements (transmission)
-            for i in range(nports):
-                for j in range(nports):
-                    if i != j:
-                        # Calculate theoretical S_ij
-                        s_theory = 2 * np.sqrt(z0[i].real*z0[j].real) / (z0[i] * z0[j] * z0_sum)
-                        assert np.isclose(abs(s_matrix[i,j]), abs(s_theory), atol=1e-3), \
-                            f"S{i+1}{j+1} mismatch at freq index {freq_idx}"
+        # Verify off-diagonal elements (transmission)
+        for i in range(nports):
+            for j in range(nports):
+                if i != j:
+                    # Calculate theoretical S_ij
+                    s_theory = 2 * np.sqrt(z0[i].real*z0[j].real) / (z0[i] * z0[j] * z0_sum)
+                    assert np.allclose(abs(s_matrix[:,i,j]), abs(s_theory), atol=1e-3), \
+                            f"S{i+1}{j+1} mismatch"
                     
-                # Verify diagonal elements (reflection)
-                s_reflection = 1 - 2/(z0[i] * z0_sum)
-                assert np.isclose(abs(s_matrix[i,i]), abs(s_reflection), atol=1e-3), \
-                    f"S{i+1}{i+1} mismatch at freq index {freq_idx}"
+            # Verify diagonal elements (reflection)
+            s_reflection = 1 - 2/(z0[i] * z0_sum)
+            assert np.allclose(abs(s_matrix[:,i,i]), abs(s_reflection), atol=1e-3), \
+                f"S{i+1}{i+1} mismatch"
 
 class TestCoupler:
+    """Test Coupler component"""
     @pytest.mark.parametrize('params', [
         {'db': -3, 'deg': -180},
         {'db': 5, 'deg': 900},
@@ -169,7 +173,7 @@ class TestPort:
         assert np.allclose(abs(network.s), 0)
         
         # Verify the port attribute is set
-        assert network._ext_attrs.get('_is_circuit_port') is True
+        assert network._is_circuit_port is True
 
 class TestGround:
     def test_ground_creation(self, base_params):
@@ -181,13 +185,10 @@ class TestGround:
         # Verify network properties
         assert isinstance(network, rf.Network)
         assert network.name == ground_name
-        assert network.s.shape == (len(base_params['frequency']), 1, 1)
+        assert network.s.shape == (len(base_params['frequency']), 2, 2)
         
         # Verify S-parameters (should be -1 for perfect short)
-        assert np.allclose(network.s, -1)
-        
-        # Verify the ground attribute is set
-        assert network._ext_attrs.get('_is_circuit_ground') is True
+        assert np.allclose(network.s, [[-1, 0], [0, -1]])
 
 class TestOpen:
     def test_open_creation(self, base_params):
@@ -199,10 +200,7 @@ class TestOpen:
         # Verify network properties
         assert isinstance(network, rf.Network)
         assert network.name == open_name
-        assert network.s.shape == (len(base_params['frequency']), 1, 1)
+        assert network.s.shape == (len(base_params['frequency']), 2, 2)
         
         # Verify S-parameters (should be 1 for perfect open)
-        assert np.allclose(network.s, 1)
-        
-        # Verify the open attribute is set
-        assert network._ext_attrs.get('_is_circuit_open') is True
+        assert np.allclose(network.s, [[1, 0], [0, 1]])

@@ -21,13 +21,7 @@ class Circuit(BaseModel):
     )
 
     def __init__(self, **data: Any):
-        print("Original networks:")
-        for name, net in data['networks'].items():
-            print(f"{name}: {type(net)}")
         super().__init__(**data)
-        print("\nAfter Pydantic validation:")
-        for name, net in self.networks.items():
-            print(f"{name}: {type(net)}")
 
     @validator('networks')
     def validate_networks(cls, v):
@@ -131,3 +125,8 @@ class Circuit(BaseModel):
         circuit = rf.Circuit(connections=connections)
         circuit.networks_list = list(network_objects.values())
         return circuit
+if __name__ == "__main__":
+    import json
+    circuit_schema = Circuit.schema()
+    with open('circuit.json','w') as f:
+        json.dump(circuit_schema, f, indent=4)
