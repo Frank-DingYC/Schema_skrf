@@ -1,67 +1,66 @@
-from pydantic.v1 import BaseModel, Field, validator
+from pydantic.v1 import Field, validator
+from tidy3d.components.base import Tidy3dBaseModel
+from tidy3d.components.types import ArrayComplex1D, ArrayComplex2D, ArrayComplex3D, ArrayFloat1D
 import skrf as rf
 import numpy as np
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Any, Union
 
-class Network(BaseModel):
-    frequency: List[float] = Field(
+class Network(Tidy3dBaseModel):
+    """An n-port electrical network"""
+    frequency: ArrayFloat1D = Field(
         ...,
+        title="Frequency",
         description="Frequency points in Hz",
         example=[1e9, 2e9, 3e9]
     )
-    s_parameters: List[List[List[List[float]]]] = Field(
+    s_parameters: ArrayComplex3D = Field(
         ...,
-        description="S-parameter matrix (n_freqs x n_ports x n_ports, [real, imag])",
-        example=[[[[1.0, 0.0], [0.0, 1.0]], [[0.0, 1.0], [1.0, 0.0]]]]
+        title="S-Parameters",
+        description="S-parameter matrix (n_freqs x n_ports x n_ports, complex)",
+        example=[[[2+1j, 1+2j], [1+2j, 2-1j]], [[2+1j, 1+2j], [1+2j, 2-1j]]]
     )
-    z0: List[List[List[float]]] = Field(
+    z0: Union[ArrayComplex2D, ArrayComplex1D] = Field(
         ...,
-        description="Impedance for each port at each frequency (n_freqs x n_ports, [real, imag])",
-        example=[[[50.0, 0.0], [50.0, 0.0]], [[50.0, 0.0], [50.0, 0.0]], [[50.0, 0.0], [50.0, 0.0]]]
+        title="Port Impedance",
+        description="Impedance for each port at each frequency (n_freqs x n_ports, complex)",
+        example=[[50.0+1j, 50.0+0j], [50.0+0j, 50.0+1j]]
     )
     name: Optional[str] = Field(
         None,
+        title="Name",
         description="Network name",
         example="2-port_network"
     )
     nports: int = Field(
         ...,
+        title="Number of Ports",
         description="Number of ports in the network",
         example=2
     )
     comments: Optional[List[str]] = Field(
         None,
+        title="Comments",
         description="User comments about the network",
         example=["Measured 2023-05-01", "Calibrated with TRL"]
     )
 
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {
-            np.ndarray: lambda v: v.tolist(),
-            complex: lambda v: [v.real, v.imag]
-        }
-
     def __init__(self, **data: Any):
-        super().__init__(**data)  # Call Pydantic's __init__ for validation
+        super().__init__(**data)
 
     @validator('nports')
-    def validate_nports(cls, v, values):
+    def validate_nports(cls, v):
+        """Validate number of ports"""
         if v <= 0:
             raise ValueError("Number of ports must be positive")
-        if 's_parameters' in values and values['s_parameters']:
-            if any(len(matrix) != v or any(len(row) != v for row in matrix) for matrix in values['s_parameters']):
-                raise ValueError(f"S-parameters must be {v}x{v} matrices")
-        if 'z0' in values and values['z0']:
-            if any(len(inner) != v for inner in values['z0']):
-                raise ValueError(f"z0 must have {v} ports")
         return v
 
     @validator('frequency')
     def validate_frequency(cls, v):
-        if not v:
-            raise ValueError("Frequency list cannot be empty")
-        if any(f < 0 for f in v):
+        if not isinstance(v, np.ndarray):
+            v = np.array(v)
+        if v.size == 0:
+            raise ValueError("Frequency array cannot be empty")
+        if np.any(v < 0):
             raise ValueError("Frequencies must be strictly positive")
         return v
 
@@ -69,41 +68,38 @@ class Network(BaseModel):
     def validate_z0(cls, v, values):
         if 'nports' not in values or 'frequency' not in values:
             return v
+        if not isinstance(v, np.ndarray):
+            v = np.array(v)
         nports = values['nports']
         n_freqs = len(values['frequency'])
-        if len(v) != n_freqs:
+        if v.shape[0] != n_freqs:
             raise ValueError(f"z0 must have {n_freqs} frequency points")
-        if any(len(inner) != nports for inner in v):
+        if v.shape[1] != nports:
             raise ValueError(f"Each z0 entry must have {nports} ports")
-        return [[(complex(real, imag).real, complex(real, imag).imag) for real, imag in inner] for inner in v]
+        return v
 
     @validator('s_parameters')
     def validate_s_parameters(cls, v, values):
         if 'nports' not in values or 'frequency' not in values:
             return v
+        if not isinstance(v, np.ndarray):
+            v = np.array(v)
         nports = values['nports']
         n_freqs = len(values['frequency'])
-        if len(v) != n_freqs:
+        if v.ndim != 3:
+            raise ValueError("S-parameters must be a 3D array (n_freqs x n_ports x n_ports)")
+        if v.shape[0] != n_freqs:
             raise ValueError(f"S-parameters must have {n_freqs} frequency points")
-        for matrix in v:
-            if len(matrix) != nports or any(len(row) != nports for row in matrix):
-                raise ValueError(f"S-parameters must be {nports}x{nports} matrices")
-        return [
-            [[(complex(real, imag).real, complex(real, imag).imag) for real, imag in row] for row in matrix]
-            for matrix in v
-        ]
+        if v.shape[1] != nports or v.shape[2] != nports:
+            raise ValueError(f"Each S-parameter matrix must be {nports}x{nports}")
+        return v
 
     @classmethod
     def from_network(cls, network: rf.Network) -> 'Network':
-        s_parameters = [
-            [[(sp.real, sp.imag) for sp in row] for row in matrix]
-            for matrix in network.s
-        ]
-        z0 = [[(z.real, z.imag) for z in inner] for inner in network.z0]
         return cls(
             frequency=list(network.f),
-            s_parameters=s_parameters,
-            z0=z0,
+            s_parameters=network.s,
+            z0=network.z0,
             name=network.name,
             nports=network.nports,
             comments=list(network.comments) if network.comments is not None else None
@@ -115,19 +111,17 @@ class Network(BaseModel):
         return cls.from_network(network)
 
     def to_network(self) -> rf.Network:
+        # Create frequency object
         freq = rf.Frequency.from_f(self.frequency, unit='Hz')
-        s = np.array([
-            [[complex(real, imag) for real, imag in row] for row in matrix]
-            for matrix in self.s_parameters
-        ])
-        z0 = np.array([[complex(real, imag) for real, imag in inner] for inner in self.z0])
-        network = rf.Network(frequency=freq, s=s, z0=z0, name=self.name)
-        network.comments = self.comments
+        
+        # Create network object with frequency points
+        network = rf.Network(frequency=freq, s=self.s_parameters, z0=self.z0, name=self.name)
+        
+        # Set metadata
+        if self.comments:
+            network.comments = self.comments
+        
         return network
-
-    @classmethod
-    def from_json(cls, json_data: Dict) -> 'Network':
-        return cls(**json_data)
 
 def interpolate_z0(z0: np.ndarray, source_freq: rf.Frequency, target_freq: rf.Frequency) -> np.ndarray:
     z0_interp = np.zeros((len(target_freq.f), z0.shape[1]), dtype=complex)
@@ -153,10 +147,3 @@ def fit_frequency(snp: rf.Network, frequency_range: rf.Frequency, **kwargs) -> r
     s_interpolated = interpolate_s(snp, frequency_range, **kwargs)
     z0_interpolated = interpolate_z0(snp.z0, snp_range, frequency_range)
     return rf.Network(frequency=frequency_range, s=s_interpolated, z0=z0_interpolated, name=snp.name)
-
-if __name__ == "__main__":
-    pass
-    # import json
-    # with open('network.json','w') as f:
-    #     network_schema = Network.schema()
-    #     json.dump(network_schema, f)

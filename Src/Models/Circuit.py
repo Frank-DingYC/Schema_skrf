@@ -1,8 +1,10 @@
-from pydantic.v1 import BaseModel, Field, validator
-from typing import Dict, List, Union, Tuple, Any
+from pydantic.v1 import Field, validator
+from tidy3d.components.base import Tidy3dBaseModel
+from typing import Dict, List, Union, Tuple, Any, Optional
 import Src.Models.Network as Network
 import Src.Models.Component as Component
 import skrf as rf
+import numpy as np
 
 NetworkType = Union[Network.Network, Component.RLGC, Component.Microwave, Component.SimComponent]
 ConnectionType = Union[
@@ -10,14 +12,34 @@ ConnectionType = Union[
     List[Tuple[str, int]]  # [(network_name, port_number)]
 ]
 
-class Circuit(BaseModel):
+class Circuit(Tidy3dBaseModel):
+    """Circuit component"""
     networks: Dict[str, NetworkType] = Field(
         ...,
-        description="Dictionary of networks/components keyed by their names"
+        title="Networks",
+        description="Dictionary of networks/components keyed by their names",
+        example={
+            'ntw1': Network.Network(frequency=np.array([1e9]), s_parameters=np.array([[[0.1+0.2j]]]), z0=np.array([[50.0+0j]]), nports=1),
+            'r1': Component.R(r=50, frequency=np.array([1e9]), z0=50.0)
+        }
     )
     connections: List[List[ConnectionType]] = Field(
         ...,
-        description="List of connection groups, where each group is a list of (network_name, port) tuples"
+        title="Connections",
+        description="List of connection groups, where each group is a list of (network_name, port) tuples",
+        example=[[('ntw1', 0), ('r1', 0)]]
+    )
+    type: str = Field(
+        'Circuit',
+        title="Type",
+        description="Type of the model",
+        example="Circuit"
+    )
+    attrs: Dict[str, Any] = Field(
+        default_factory=dict,
+        title="Attributes",
+        description="Additional attributes",
+        example={"note": "Example circuit"}
     )
 
     def __init__(self, **data: Any):
@@ -35,7 +57,7 @@ class Circuit(BaseModel):
         
         # Check all networks have same frequency points
         for name, net in v.items():
-            if net.frequency != freq_points:
+            if not np.array_equal(net.frequency, freq_points):
                 raise ValueError(f"Network '{name}' has incompatible frequency points")
         return v
 
@@ -63,7 +85,7 @@ class Circuit(BaseModel):
         """Create Circuit from scikit-rf Circuit object"""
         networks = {
             ntw.name: Network.Network.from_network(ntw) 
-            for ntw in circuit.networks_list
+            for ntw in circuit.networks_list()
         }
         connections = [
             [(conn[0].name, conn[1]) for conn in conn_list] 
@@ -76,57 +98,18 @@ class Circuit(BaseModel):
         # Convert all networks/components to rf.Network objects
         network_objects = {}
         for name, net in self.networks.items():
-            if isinstance(net, Network.Network):
-                network_objects[name] = net.to_network()
-            elif isinstance(net, Component.RLGC):
-                # Handle RLGC components
-                if isinstance(net, Component.R):
-                    network_objects[name] = net.to_r()
-                elif isinstance(net, Component.L):
-                    network_objects[name] = net.to_l()
-                elif isinstance(net, Component.G):
-                    network_objects[name] = net.to_g()
-                elif isinstance(net, Component.C):
-                    network_objects[name] = net.to_c()
-            elif isinstance(net, Component.Microwave):
-                # Handle Microwave components
-                if isinstance(net, Component.Attenuator):
-                    network_objects[name] = net.to_attenuator()
-                elif isinstance(net, Component.Isolator):
-                    network_objects[name] = net.to_isolator()
-                elif isinstance(net, Component.Splitter):
-                    network_objects[name] = net.to_splitter()
-                elif isinstance(net, Component.Coupler):
-                    network_objects[name] = net.to_coupler()
-            elif isinstance(net, Component.SimComponent):
-                # Handle Simulation components
-                if isinstance(net, Component.Port):
-                    network_objects[name] = net.to_port()
-                elif isinstance(net, Component.Ground):
-                    network_objects[name] = net.to_ground()
-                elif isinstance(net, Component.Open):
-                    network_objects[name] = net.to_open()
+            if isinstance(net, NetworkType):
+                temp_network = net.to_network()
+                temp_network.name = name
+                network_objects[name] = temp_network
             else:
-                raise ValueError(f"Unsupported network type for '{name}'")
-            
-            # Set network name while preserving _ext_attrs
-            ext_attrs = getattr(network_objects[name], '_ext_attrs', {})
-            network_objects[name].name = name
-            if ext_attrs:
-                network_objects[name]._ext_attrs = ext_attrs
-
-        # Create connections list
-        connections = [
-            [(network_objects[conn[0]], conn[1]) for conn in conn_list]
-            for conn_list in self.connections
-        ]
-
-        # Create circuit and set networks_list
-        circuit = rf.Circuit(connections=connections)
-        circuit.networks_list = list(network_objects.values())
+                raise ValueError(f"Network '{name}' is not a valid network type")
+        connections = [[(network_objects[conn[0]], conn[1]) for conn in conn_list] for conn_list in self.connections]
+        circuit = rf.Circuit(connections)
         return circuit
+
 if __name__ == "__main__":
     import json
-    circuit_schema = Circuit.schema()
     with open('circuit.json','w') as f:
+        circuit_schema = Circuit.schema()
         json.dump(circuit_schema, f, indent=4)

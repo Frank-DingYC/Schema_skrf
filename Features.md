@@ -1,15 +1,28 @@
 # Schema_skrf Features
 
 ## Recent Updates
-1. Added type discrimination for all components
-2. Fixed component type preservation in Circuit model
-3. Improved test stability for simulation components
-4. Added comprehensive type validation system
-5. Enhanced component identification mechanism
-6. Streamlined circuit testing framework
+
+1. Integrated with Tidy3d base model system
+2. Enhanced model validation and type safety
+3. Added type discrimination for all components
+4. Fixed component type preservation in Circuit model
+5. Improved test stability for simulation components
+6. Added comprehensive type validation system
+7. Enhanced component identification mechanism
+8. Streamlined circuit testing framework
+9. Improved impedance handling with default 50Ω behavior
+10. Enhanced z0 and z0_port validation in components
+11. Improved z0 type flexibility (support for both 1D and 2D arrays)
+12. Enhanced scikit-rf Circuit conversion robustness
+13. Fixed network list handling in Circuit conversions
+14. Optimized Network instantiation with direct parameter passing
 
 ## Circuit Model
 ### Core Features
+* Tidy3d Integration
+  * Built on Tidy3d's base model system
+  * Enhanced validation and type safety
+  * Consistent with Tidy3d's component architecture
 * Unified Component Interface
   * Seamless integration of Network and Component models
   * Support for RLGC components (Resistors, Inductors, Capacitors, Conductors)
@@ -46,6 +59,10 @@
 
 ## Component Models
 ### Base Features
+* Tidy3d Base Model
+  * Enhanced validation through Tidy3d's model system
+  * Robust error handling and type checking
+  * Consistent with Tidy3d's component architecture
 * Common Attributes
   * Type identification field
   * Frequency specification
@@ -53,6 +70,7 @@
   * Network conversion capabilities
 
 ### RLGC Components
+
 * Type-Specific Features
   * R: Resistance with type='R'
   * L: Inductance with type='L'
@@ -60,7 +78,8 @@
   * C: Capacitance with type='C'
 * Common Features
   * Frequency-dependent behavior
-  * Port impedance specification
+  * Port impedance specification (default 50Ω)
+  * Automatic impedance normalization
   * Network conversion capabilities
 
 ### Microwave Components
@@ -114,10 +133,13 @@
 
 ## Testing & Validation
 * Component Tests
+
   * Type preservation verification
   * Network conversion validation
   * RLGC component functionality
   * Microwave component behavior
+  * Impedance configuration validation
+  * Default impedance behavior testing
 * Simulation Component Tests
   * Port matching characteristics
   * Ground reflection coefficient
