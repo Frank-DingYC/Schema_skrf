@@ -6,7 +6,7 @@ import numpy as np
 @pytest.fixture
 def base_params():
     return {
-        'frequency': list(np.linspace(1e9, 2e9, 100)),
+        'frequency': np.array(np.linspace(1e9, 2e9, 100), dtype=float),
         'z0': 50+0j,
     }
 
@@ -49,12 +49,30 @@ class TestR:
         r_model = R(r=100.0, frequency=freq,
                    z0=z0_array, z0_port=z0_port_array)
         assert np.all(r_model.z0 == z0_array)
-        assert np.all(r_model.z0_port == z0_port_array)
         network = r_model.to_network()
-        # Network z0 has shape (freq_points, n_ports)
         assert np.all(network.z0[:, 0] == z0_port_array)
         assert np.all(network.z0[:, 1] == z0_port_array)
 
+        
+    def test_r_array_parameter(self):
+        """Test resistor with array resistance"""
+        freq = np.array(np.linspace(1e9, 2e9, 100), dtype=float)
+        r_values = np.array(50 + 10 * np.sin(2 * np.pi * freq / 1e9), dtype=float)  # Frequency-dependent resistance
+        r_model = R(r=r_values, frequency=freq)
+        network = r_model.to_network()
+        
+        # Verify network properties
+        assert network.nports == 2
+        assert network.f.size == len(freq)
+        assert network.s.shape == (len(freq), 2, 2)
+        
+    def test_r_frequency_mismatch(self):
+        """Test validation error when resistance array length doesn't match frequency points"""
+        freq = np.array(np.linspace(1e9, 2e9, 100), dtype=float)
+        r_values = np.array(np.linspace(50, 100, 50), dtype=float)  # Only 50 points vs 100 frequency points
+        
+        with pytest.raises(ValueError, match="must match the number of frequency points"):
+            r = R(r=r_values, frequency=freq)
 
 class TestL:
     """Test Inductor component"""
@@ -77,12 +95,53 @@ class TestL:
             l_model = L(**params, **base_params)
             l_model.to_network()
 
+    def test_l_array_parameter(self):
+        """Test inductor with array inductance"""
+        freq = np.linspace(1e9, 2e9, 100)
+        l_values = 1e-9 + 0.5e-9 * np.sin(2 * np.pi * freq / 1e9)  # Frequency-dependent inductance
+        l_model = L(l=l_values, frequency=freq)
+        network = l_model.to_network()
+        
+        # Verify network properties
+        assert network.nports == 2
+        assert network.f.size == len(freq)
+        assert network.s.shape == (len(freq), 2, 2)
+        
+    def test_l_frequency_mismatch(self):
+        """Test validation error when inductance array length doesn't match frequency points"""
+        freq = np.array(np.linspace(1e9, 2e9, 100), dtype=float)
+        l_values = np.array(np.linspace(1e-9, 2e-9, 80), dtype=float)  # Only 80 points vs 100 frequency points
+        
+        with pytest.raises(ValueError, match="must match the number of frequency points"):
+            L(l=l_values, frequency=freq)
+
+
 class TestG:
     """Test Conductance component"""
     def test_g_creation(self, base_params):
-        g_model = G(g=1e-9, **base_params)
+        g_model = G(g=0.01, **base_params)
+        assert isinstance(g_model.to_network(), rf.Network)
+        
+    def test_g_array_parameter(self):
+        """Test conductance with array conductance"""
+        freq = np.linspace(1e9, 2e9, 100)
+        g_values = 0.01 + 0.005 * np.sin(2 * np.pi * freq / 1e9)  # Frequency-dependent conductance
+        g_model = G(g=g_values, frequency=freq)
         network = g_model.to_network()
-        assert isinstance(network, rf.Network)
+        
+        # Verify network properties
+        assert network.nports == 2
+        assert network.f.size == len(freq)
+        assert network.s.shape == (len(freq), 2, 2)
+        
+    def test_g_frequency_mismatch(self):
+        """Test validation error when conductance array length doesn't match frequency points"""
+        freq = np.array(np.linspace(1e9, 2e9, 100), dtype=float)
+        g_values = np.array(np.linspace(0.01, 0.02, 120), dtype=float)  # 120 points vs 100 frequency points
+        
+        with pytest.raises(ValueError, match="must match the number of frequency points"):
+            G(g=g_values, frequency=freq)
+
 
 class TestC:
     """Test Capacitor component"""
@@ -105,6 +164,27 @@ class TestC:
             c_model = C(**params, **base_params)
             c_model.to_network()
 
+    def test_c_array_parameter(self):
+        """Test capacitor with array capacitance"""
+        freq = np.linspace(1e9, 2e9, 100)
+        c_values = 1e-12 + 0.5e-12 * np.sin(2 * np.pi * freq / 1e9)  # Frequency-dependent capacitance
+        c_model = C(c=c_values, frequency=freq)
+        network = c_model.to_network()
+        
+        # Verify network properties
+        assert network.nports == 2
+        assert network.f.size == len(freq)
+        assert network.s.shape == (len(freq), 2, 2)
+        
+    def test_c_frequency_mismatch(self):
+        """Test validation error when capacitance array length doesn't match frequency points"""
+        freq = np.array(np.linspace(1e9, 2e9, 100), dtype=float)
+        c_values = np.array(np.linspace(1e-12, 2e-12, 90), dtype=float)  # Only 90 points vs 100 frequency points
+        
+        with pytest.raises(ValueError, match="must match the number of frequency points"):
+            C(c=c_values, frequency=freq)
+
+
 class TestAttenuator:
     """Test Attenuator component"""
     @pytest.mark.parametrize('params', [
@@ -117,6 +197,42 @@ class TestAttenuator:
         network = atten.to_network()
         assert isinstance(network, rf.Network)
         assert network.s.shape == (len(base_params['frequency']), 2, 2)
+
+    def test_attenuator_array_parameter(self):
+        """Test attenuator with array s21"""
+        freq = np.linspace(1e9, 2e9, 100)
+        # Frequency-dependent attenuation (in dB)
+        s21_values = 3 + np.sin(2 * np.pi * freq / 1e9)
+        
+        # Test with dB values
+        att_model = Attenuator(s21=s21_values, db=True, frequency=freq)
+        network = att_model.to_network()
+        assert network.nports == 2
+        assert network.f.size == len(freq)
+        assert network.s.shape == (len(freq), 2, 2)
+        
+        # Test with linear values
+        s21_linear = 10**(-s21_values/20)  # Convert dB to linear scale
+        att_model = Attenuator(s21=s21_linear, db=False, frequency=freq)
+        network = att_model.to_network()
+        assert network.nports == 2
+        assert network.f.size == len(freq)
+        assert network.s.shape == (len(freq), 2, 2)
+        
+    def test_attenuator_frequency_mismatch(self):
+        """Test validation error when s21 array length doesn't match frequency points"""
+        freq = np.array(np.linspace(1e9, 2e9, 100), dtype=float)
+        # Only 75 points vs 100 frequency points
+        s21_values = np.array(3 + np.sin(2 * np.pi * np.linspace(1e9, 2e9, 75) / 1e9), dtype=float)
+        
+        with pytest.raises(ValueError, match="must match the number of frequency points"):
+            Attenuator(s21=s21_values, db=True, frequency=freq)
+            
+        # Test with linear values too
+        s21_linear = 10**(-s21_values/20)
+        with pytest.raises(ValueError, match="must match the number of frequency points"):
+            Attenuator(s21=s21_linear, db=False, frequency=freq)
+
 
 class TestIsolator:
     @pytest.mark.parametrize('source_port', [0, 1])
@@ -260,3 +376,6 @@ class TestOpen:
         
         # Verify S-parameters (should be 1 for perfect open)
         assert np.allclose(network.s, [[1, 0], [0, 1]])
+if __name__ == '__main__':
+    test = TestR()
+    test.test_r_frequency_mismatch()

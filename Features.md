@@ -16,6 +16,9 @@
 12. Enhanced scikit-rf Circuit conversion robustness
 13. Fixed network list handling in Circuit conversions
 14. Optimized Network instantiation with direct parameter passing
+15. Enhanced array parameter validation for all components
+16. Improved frequency point matching validation
+17. Added pre-validation for component parameters
 
 ## Circuit Model
 ### Core Features
@@ -42,8 +45,10 @@
   * Preserved type information during conversion
 * Frequency Compatibility
   * Automatic validation of frequency points across components
+  * Pre-validation of array parameter lengths
   * Ensures consistent frequency ranges in circuit simulations
   * Early error detection for mismatched components
+  * Support for numpy array and ArrayFloat1D types
 * Connection Management
   * Validates all network references before circuit creation
   * Supports flexible port connection specifications
@@ -154,19 +159,20 @@
 ## Project Structure
 Schema_skrf/
 * Data/
-  * Measurement datasets
-  * Touchstone files
-    * Calibration kits (3.5mm/2.92mm)
-    * Device models (Transistor/SMD)
+  * Touchstone/
+    * Calibration data (Agilent_E5071B.s4p, RS_ZNB8.s4p)
+    * Component models (LFCN-2352+, fet.s2p)
+    * Test fixtures (various .sNp files)
+    * Reference designs (splitters, couplers)
+* Example/
+  * Comparison.ipynb (Component comparison examples)
 * Src/
   * Models/
     * Circuit.py (Circuit composition and validation)
     * Component.py (Component model definitions)
     * Network.py (Network parameter handling)
-    * Microwave.py (Microwave components)
-  * tests/
-    * test_Circuit.py (Circuit integration tests)
-    * test_Component.py (Component validation tests)
-    * test_RLGC.py (Model validation suite)
-    * test_Network.py (Network I/O tests)
-    * test_Circuit.py (Circuit conversion tests)
+    * Media.py (Media component definitions)
+* Tests/
+  * test_Circuit.py (Circuit integration tests)
+  * test_Component.py (Component validation tests)
+  * test_Network.py (Network I/O tests)

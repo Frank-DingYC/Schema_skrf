@@ -53,6 +53,13 @@ class R(AbstractMedia):
         frozen=True
     )
 
+    @validator('r', pre=True)
+    def validate_r_length(cls, v, values):
+        if hasattr(v, '__len__') and 'frequency' in values:
+            if len(v) != len(values['frequency']):
+                raise ValueError("Length of resistance array must match the number of frequency points")
+        return v
+
     def to_network(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
         media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
@@ -86,6 +93,13 @@ class L(AbstractMedia):
         description="Type of component",
         frozen=True
     )
+
+    @validator('l', pre=True)
+    def validate_l_length(cls, v, values):
+        if hasattr(v, '__len__') and 'frequency' in values:
+            if len(v) != len(values['frequency']):
+                raise ValueError("Length of inductance array must match the number of frequency points")
+        return v
 
     def to_network(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
@@ -129,6 +143,13 @@ class C(AbstractMedia):
         frozen=True
     )
 
+    @validator('c', pre=True)
+    def validate_c_length(cls, v, values):
+        if hasattr(v, '__len__') and 'frequency' in values:
+            if len(v) != len(values['frequency']):
+                raise ValueError("Length of capacitance array must match the number of frequency points")
+        return v
+
     def to_network(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
         media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
@@ -155,6 +176,13 @@ class G(AbstractMedia):
         description="Type of component",
         frozen=True
     )
+
+    @validator('g', pre=True)
+    def validate_g_length(cls, v, values):
+        if hasattr(v, '__len__') and 'frequency' in values:
+            if len(v) != len(values['frequency']):
+                raise ValueError("Length of conductance array must match the number of frequency points")
+        return v
 
     def to_network(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
@@ -191,6 +219,13 @@ class Attenuator(AbstractMedia):
         description="Type of component",
         frozen=True
     )
+
+    @validator('s21', pre=True)
+    def validate_s21_length(cls, v, values):
+        if hasattr(v, '__len__') and 'frequency' in values:
+            if len(v) != len(values['frequency']):
+                raise ValueError("Length of s21 array must match the number of frequency points")
+        return v
 
     def to_network(self) -> rf.Network:
         frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
