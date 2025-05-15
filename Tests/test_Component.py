@@ -1,20 +1,107 @@
 import pytest
 from Src.Models.Component import R, L, G, C, Attenuator, Isolator, Splitter, Coupler, Port, Ground, Open
+from Src.Models.Media import CoaxialLine, MicrostripLine, DistributedRLGC, RWG, CWG, CPWLine
 import skrf as rf
 import numpy as np
 
 @pytest.fixture
 def base_params():
+    """Basic parameters for component testing"""
     return {
-        'frequency': np.array(np.linspace(1e9, 2e9, 100), dtype=float),
-        'z0': 50+0j,
+        'frequency': list(np.linspace(1e9, 2e9, 100))
     }
+
+@pytest.fixture
+def test_media(base_params):
+    """Fixture providing all available media types"""
+    freq = base_params['frequency']
+    
+    media = [
+        # Coaxial line
+        CoaxialLine(
+            frequency=freq,
+            dinner=2e-3,  # Inner diameter
+            douter=6e-3   # Outer diameter
+        ),
+        # Rectangular waveguide
+        RWG(
+            frequency=freq,
+            a=1e-2,  # Width
+            b=5e-3,  # Height
+            mode_type='TE'
+        ),
+        # Circular waveguide
+        CWG(
+            frequency=freq,
+            r=5e-3,  # Radius
+            mode_type='te'
+        ),
+        # Coplanar waveguide
+        CPWLine(
+            frequency=freq,
+            w=3e-3,  # Width
+            s=0.3e-3,  # Gap
+            h=1.55  # Height
+        ),
+        # Microstrip line
+        MicrostripLine(
+            frequency=freq,
+            w=1e-3,  # Width
+            h=0.5e-3  # Height
+        ),
+        # Distributed RLGC
+        DistributedRLGC(
+            frequency=freq,
+            R=1.0,
+            L=2e-9,
+            G=0.1,
+            C=2e-12
+        )
+    ]
+    return media
 
 class TestR:
     """Test Resistor component"""
     def test_r_creation(self, base_params):
         r_model = R(r=100.0, **base_params)
         assert isinstance(r_model.to_network(), rf.Network)
+
+    def test_r_with_different_media(self):
+        """Test resistor with different transmission line media"""
+        freq = np.linspace(1e9, 2e9, 100)
+        r_model = R(r=50, frequency=freq)
+
+        # Test with coaxial line
+        coax = CoaxialLine(
+            frequency=freq,
+            dinner=2e-3,  # Inner diameter
+            douter=6e-3   # Outer diameter
+        )
+        network_coax = r_model.to_network(media=coax)
+        assert isinstance(network_coax, rf.Network)
+        assert network_coax.nports == 2
+
+        # Test with microstrip line
+        mline = MicrostripLine(
+            frequency=freq,
+            w=1e-3,  # Width
+            h=0.5e-3  # Height
+        )
+        network_mline = r_model.to_network(media=mline)
+        assert isinstance(network_mline, rf.Network)
+        assert network_mline.nports == 2
+
+        # Test with distributed RLGC
+        rlgc = DistributedRLGC(
+            frequency=freq,
+            R=1.0,
+            L=2e-9,
+            G=0.1,
+            C=2e-12
+        )
+        network_rlgc = r_model.to_network(media=rlgc)
+        assert isinstance(network_rlgc, rf.Network)
+        assert network_rlgc.nports == 2
 
     def test_r_impedance(self):
         # Test with default z0
@@ -72,7 +159,7 @@ class TestR:
         r_values = np.array(np.linspace(50, 100, 50), dtype=float)  # Only 50 points vs 100 frequency points
         
         with pytest.raises(ValueError, match="must match the number of frequency points"):
-            r = R(r=r_values, frequency=freq)
+            R(r=r_values, frequency=freq)
 
 class TestL:
     """Test Inductor component"""
@@ -121,6 +208,43 @@ class TestG:
     def test_g_creation(self, base_params):
         g_model = G(g=0.01, **base_params)
         assert isinstance(g_model.to_network(), rf.Network)
+
+    def test_g_with_different_media(self):
+        """Test conductance with different transmission line media"""
+        freq = np.linspace(1e9, 2e9, 100)
+        g_model = G(g=0.01, frequency=freq)
+
+        # Test with coaxial line
+        coax = CoaxialLine(
+            frequency=freq,
+            dinner=2e-3,  # Inner diameter
+            douter=6e-3   # Outer diameter
+        )
+        network_coax = g_model.to_network(media=coax)
+        assert isinstance(network_coax, rf.Network)
+        assert network_coax.nports == 2
+
+        # Test with microstrip line
+        mline = MicrostripLine(
+            frequency=freq,
+            w=1e-3,  # Width
+            h=0.5e-3  # Height
+        )
+        network_mline = g_model.to_network(media=mline)
+        assert isinstance(network_mline, rf.Network)
+        assert network_mline.nports == 2
+
+        # Test with distributed RLGC
+        rlgc = DistributedRLGC(
+            frequency=freq,
+            R=1.0,
+            L=2e-9,
+            G=0.1,
+            C=2e-12
+        )
+        network_rlgc = g_model.to_network(media=rlgc)
+        assert isinstance(network_rlgc, rf.Network)
+        assert network_rlgc.nports == 2
         
     def test_g_array_parameter(self):
         """Test conductance with array conductance"""
@@ -289,6 +413,56 @@ class TestSplitter:
             s_reflection = 1 - 2/(z0[i] * z0_sum)
             assert np.allclose(abs(s_matrix[:,i,i]), abs(s_reflection), atol=1e-3), \
                 f"S{i+1}{i+1} mismatch"
+
+def test_components_with_all_media(base_params, test_media):
+    """Test all components with all available media types"""
+    freq = base_params['frequency']
+    
+    # List of component classes and their required parameters
+    components = [
+        (R, {'r': 50}),
+        (L, {'l': 1e-9}),
+        (G, {'g': 0.02}),
+        (C, {'c': 1e-12}),
+        (Attenuator, {'s21': 0.1, 'db': False}),  # 0.1 = -20dB attenuation
+        (Isolator, {'source_port': 0}),
+        (Splitter, {'nports': 3}),
+        (Coupler, {'db': 3, 'deg': 0}),
+        (Port, {'name': 'test_port'}),
+        (Ground, {'name': 'test_ground'}),
+        (Open, {'name': 'test_open'})
+    ]
+    
+    # Test each component with each media type
+    for component_class, params in components:
+        # Create component instance
+        component = component_class(
+            frequency=freq,
+            **params
+        )
+        
+        # Test with each media type
+        for media in test_media:
+            # Convert component to network with the given media
+            if isinstance(component, (Port, Ground, Open)):
+                # These components don't accept media parameter
+                network = component.to_network(z0_port=50)
+            else:
+                network = component.to_network(media=media)
+                
+            # Basic assertions
+            assert isinstance(network, rf.Network)
+            if not isinstance(component, (Port, Ground, Open)):
+                # These components don't use the frequency parameter
+                assert network.frequency.f.tolist() == freq
+            
+            # Check number of ports based on component type
+            if isinstance(component, Splitter):
+                assert network.nports == component.nports
+            elif isinstance(component, Coupler):
+                assert network.nports == 4  # Couplers always have 4 ports
+            elif isinstance(component, (R, L, G, C, Attenuator, Isolator, Port, Ground, Open)):
+                assert network.nports == 1 or network.nports == 2
 
 class TestCoupler:
     """Test Coupler component"""

@@ -4,9 +4,10 @@ from tidy3d.components.base import Tidy3dBaseModel
 from tidy3d.components.types import ArrayComplex1D, ArrayFloat1D
 from typing import Literal, Union, Optional, Any
 import skrf as rf
-from skrf.media import device
+from skrf.media import Media, device
+from Src.Models.Media import TransmissionLine
 
-class AbstractMedia(Tidy3dBaseModel):
+class AbstractComponent(Tidy3dBaseModel):
     """Abstract base class for all media components"""
     frequency: ArrayFloat1D = Field(
         ...,
@@ -36,10 +37,46 @@ class AbstractMedia(Tidy3dBaseModel):
         super().__init__(**data)
     
     @abstractmethod
-    def to_network(self) -> rf.Network:
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        """Convert to scikit-rf Network object
+        
+        Args:
+            media: Optional scikit-rf Media object. If provided, use this media to create the network.
+                  If not provided, create media using to_media() method.
+        
+        Returns:
+            rf.Network: A scikit-rf Network object representing this media
+        """
         raise NotImplementedError
+    
+    def to_media(self, media: Optional[TransmissionLine] = None) -> Media:
+        """Convert to scikit-rf Media object
+        
+        Args:
+            media: Optional TransmissionLine object. If provided, use this media to create the media.
+                  If not provided, create media using to_media() method.
+        
+        Returns:
+            rf.Media: A scikit-rf Media object representing this media
+        """
+        if self.frequency is None:
+            raise ValueError("frequency must be specified")
+        if self.z0 is None:
+            raise ValueError("z0 must be specified")
+        if self.z0_port is None:
+            raise ValueError("z0_port must be specified")
+        if media is None:
+            frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
+            media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+        else:
+            media = media.updated_copy(
+                frequency=self.frequency,
+                z0=self.z0,
+                z0_port=self.z0_port
+            ).to_rf_media()
+        return media
 
-class R(AbstractMedia):
+class R(AbstractComponent):
     """Resistor component"""
     r: Union[float, ArrayFloat1D] = Field(
         ...,
@@ -60,12 +97,11 @@ class R(AbstractMedia):
                 raise ValueError("Length of resistance array must match the number of frequency points")
         return v
 
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         return media.resistor(self.r)
 
-class L(AbstractMedia):
+class L(AbstractComponent):
     """Inductor component"""
     l: Union[float, ArrayFloat1D] = Field(
         ...,
@@ -101,9 +137,8 @@ class L(AbstractMedia):
                 raise ValueError("Length of inductance array must match the number of frequency points")
         return v
 
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         if self.f_0 is None and self.q_factor is None:
             return media.inductor(self.l)
         elif self.f_0 is not None and self.q_factor is not None:
@@ -114,7 +149,7 @@ class L(AbstractMedia):
         else:
             raise ValueError("f_0 and q_factor must be both specified or both None")
 
-class C(AbstractMedia):
+class C(AbstractComponent):
     """Capacitor component"""
     c: Union[float, ArrayFloat1D] = Field(
         ...,
@@ -150,9 +185,8 @@ class C(AbstractMedia):
                 raise ValueError("Length of capacitance array must match the number of frequency points")
         return v
 
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         if self.f_0 is None and self.q_factor is None:
             return media.capacitor(self.c)
         elif self.f_0 is not None and self.q_factor is not None:
@@ -163,7 +197,7 @@ class C(AbstractMedia):
         else:
             raise ValueError("f_0 and q_factor must be both specified or both None")
 
-class G(AbstractMedia):
+class G(AbstractComponent):
     """Conductor component"""
     g: Union[float, ArrayFloat1D] = Field(
         ...,
@@ -184,14 +218,13 @@ class G(AbstractMedia):
                 raise ValueError("Length of conductance array must match the number of frequency points")
         return v
 
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         return media.shunt_resistor(self.g)
 
 RLGC = Union[R, L, G, C]
 
-class Attenuator(AbstractMedia):
+class Attenuator(AbstractComponent):
     """Attenuator component"""
     s21: Union[float, ArrayFloat1D] = Field(
         ...,
@@ -227,12 +260,11 @@ class Attenuator(AbstractMedia):
                 raise ValueError("Length of s21 array must match the number of frequency points")
         return v
 
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         return media.attenuator(self.s21, self.db, self.d, self.unit)
 
-class Isolator(AbstractMedia):
+class Isolator(AbstractComponent):
     """Isolator component"""
     source_port: Optional[int] = Field(
         0,
@@ -246,14 +278,13 @@ class Isolator(AbstractMedia):
         frozen=True
     )
     
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         if self.source_port not in [0, 1]:
             raise ValueError("source_port must be 0 or 1")
         return media.isolator(self.source_port)
 
-class Splitter(AbstractMedia):
+class Splitter(AbstractComponent):
     """Splitter component"""
     nports: int = Field(
         3,
@@ -267,12 +298,11 @@ class Splitter(AbstractMedia):
         description="Type of component",
         frozen=True
     )    
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         return media.splitter(self.nports)
 
-class Coupler(AbstractMedia):
+class Coupler(AbstractComponent):
     """
     Coupler component
     The resultant ntwk port assignment is as follows:
@@ -309,15 +339,14 @@ class Coupler(AbstractMedia):
             raise ValueError('Phase offset must be an integer')
         return v % 360
     
-    def to_network(self) -> rf.Network:
-        frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-        media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+    def to_network(self, media: Optional[TransmissionLine] = None) -> rf.Network:
+        media = self.to_media(media)
         coupler = device.MatchedSymmetricCoupler.from_dbdeg(db=self.db, deg=self.deg, media=media)
         return coupler.ntwk
     
 Microwave = Union[Attenuator, Isolator, Splitter, Coupler]
 
-class Port(AbstractMedia):
+class Port(AbstractComponent):
     """Port component"""
     name: str = Field(
         ...,
@@ -336,7 +365,7 @@ class Port(AbstractMedia):
         port = rf.Circuit.Port(frequency=frequency, z0=z0_port, name=self.name)
         return port
 
-class Ground(AbstractMedia):
+class Ground(AbstractComponent):
     """Ground component"""
     name: str = Field(
         ...,
@@ -355,7 +384,7 @@ class Ground(AbstractMedia):
         gnd = rf.Circuit.Ground(frequency=frequency, z0=z0_port, name=self.name)
         return gnd
 
-class Open(AbstractMedia):
+class Open(AbstractComponent):
     """Open component"""
     name: str = Field(
         ...,

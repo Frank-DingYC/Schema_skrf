@@ -2,26 +2,35 @@
 
 ## Recent Updates
 
-1. Integrated with Tidy3d base model system
-2. Enhanced model validation and type safety
-3. Added type discrimination for all components
-4. Fixed component type preservation in Circuit model
-5. Improved test stability for simulation components
-6. Added comprehensive type validation system
-7. Enhanced component identification mechanism
-8. Streamlined circuit testing framework
-9. Improved impedance handling with default 50Ω behavior
-10. Enhanced z0 and z0_port validation in components
-11. Improved z0 type flexibility (support for both 1D and 2D arrays)
-12. Enhanced scikit-rf Circuit conversion robustness
-13. Fixed network list handling in Circuit conversions
-14. Optimized Network instantiation with direct parameter passing
-15. Enhanced array parameter validation for all components
-16. Improved frequency point matching validation
-17. Added pre-validation for component parameters
+1. Added comprehensive MicrostripLine implementation and test suite
+2. Enhanced media validation with improved parameter checks
+3. Added compatibility mode support for media models
+4. Integrated with Tidy3d base model system
+5. Enhanced model validation and type safety
+6. Added type discrimination for all components
+7. Fixed component type preservation in Circuit model
+8. Improved test stability for simulation components
+9. Added comprehensive type validation system
+10. Enhanced component identification mechanism
+11. Streamlined circuit testing framework
+12. Improved impedance handling with default 50Ω behavior
+13. Enhanced z0 and z0_port validation in components
+14. Improved z0 type flexibility (support for both 1D and 2D arrays)
+15. Enhanced scikit-rf Circuit conversion robustness
+16. Fixed network list handling in Circuit conversions
+17. Optimized Network instantiation with direct parameter passing
+18. Enhanced array parameter validation for all components
+19. Improved frequency point matching validation
+20. Added pre-validation for component parameters
+21. Added comprehensive media compatibility tests for all components
+22. Enhanced component-media interaction validation
+23. Added support for testing components with multiple media types
+24. Improved media parameter validation across all transmission line types
 
 ## Circuit Model
+
 ### Core Features
+
 * Tidy3d Integration
   * Built on Tidy3d's base model system
   * Enhanced validation and type safety
@@ -37,7 +46,9 @@
   * Automatic type validation during instantiation
   * Type-safe component conversion
 
+
 ### Validation & Safety
+
 * Component Type Safety
   * Literal type fields for precise type checking
   * Immutable type definitions
@@ -56,6 +67,7 @@
   * Maintains network naming consistency
 
 ### Integration Features
+
 * Scikit-RF Compatibility
   * Bidirectional conversion with scikit-rf Circuit objects
   * Preserves network names and port assignments
@@ -63,7 +75,9 @@
   * Automatic handling of component-specific conversions
 
 ## Component Models
+
 ### Base Features
+
 * Tidy3d Base Model
   * Enhanced validation through Tidy3d's model system
   * Robust error handling and type checking
@@ -88,6 +102,7 @@
   * Network conversion capabilities
 
 ### Microwave Components
+
 * Attenuator (type='Attenuator')
   * dB/linear mode support
   * Delay parameter with ps/ns/deg units
@@ -110,6 +125,7 @@
     * Port 3: Isolated
 
 ### Simulation Components
+
 * Port (type='Port')
   * Named port termination
   * Perfect impedance matching
@@ -127,6 +143,7 @@
   * Ideal for stub terminations
 
 ## Component Integration
+
 * Mixed Component Circuits
   * Type-safe integration of all component types:
     * RLGC (passive components)
@@ -137,11 +154,90 @@
   * Preserved component attributes and types
 
 ## Testing & Validation
-* Component Tests
 
+* Component Tests
   * Type preservation verification
   * Network conversion validation
   * RLGC component functionality
+  * Media compatibility validation
+    * Comprehensive testing with all media types:
+      * Coaxial Line
+      * Rectangular Waveguide (RWG)
+      * Circular Waveguide (CWG)
+      * Coplanar Waveguide (CPW)
+      * Microstrip Line
+      * Distributed RLGC
+    * Component-specific media interaction tests
+    * Port count validation for each media type
+    * Frequency response verification
+    * Impedance matching validation
+
+## Media Model
+
+### Core Features
+
+* Transmission Line Support
+  * Coaxial Line (CoaxialLine)
+    * Configurable inner and outer diameters
+    * Support for lossy conductor modeling
+    * Dielectric loss modeling
+  * Microstrip Line (MicrostripLine)
+    * Configurable width, height, and thickness
+    * Multiple impedance models (Hammerstad-Jensen, Wheeler, Schneider)
+    * Dispersion models (Kirschning-Jansen, Kobayashi, etc.)
+    * Surface roughness and conductor loss modeling
+    * Frequency-dependent dielectric modeling
+    * QUCS compatibility mode
+  * Coplanar Waveguide (CPWLine)
+    * Configurable center conductor and gap width
+    * Support for substrate parameters
+    * Dielectric and conductor loss modeling
+    * Customizable dielectric properties
+    * Support for conductor losses
+
+  * Rectangular Waveguide (RWG)
+    * Flexible dimensions (width and height)
+    * TE/TM mode support
+    * Configurable mode indices
+  * Circular Waveguide (CWG)
+    * Variable radius configuration
+    * TE/TM mode support
+    * Azimuthal and radial mode control
+
+
+### Material Properties
+
+* Property Support
+  * Relative permittivity (εr) support
+  * Relative permeability (μr) handling
+  * Loss tangent for dielectrics
+  * Conductor resistivity modeling
+  * Surface roughness effects
+
+
+### Integration & Compatibility
+
+* Scikit-RF Integration
+  * Seamless conversion to scikit-rf media objects
+  * Preserved parameter mapping
+  * Full compatibility with scikit-rf's analysis tools
+  * Support for scikit-rf media types
+
+* Impedance Handling
+  * Flexible characteristic impedance (Z0) configuration
+  * Port impedance renormalization support
+  * Support for frequency-dependent impedance array compatibility
+
+### Validation System
+* Parameter Validation
+  * Strict dimensional parameter checks
+  * Mode index validation
+  * Material property bounds verification
+  * Frequency point consistency
+* Type Safety
+  * Frozen type literals for media identification
+  * Union type support for transmission lines
+  * Comprehensive error messages
   * Microwave component behavior
   * Impedance configuration validation
   * Default impedance behavior testing
