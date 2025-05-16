@@ -2,6 +2,15 @@
 
 ## Recent Updates
 
+### Tutorial Enhancements
+
+* Updated Network Tutorial with Python 3.12.0 compatibility
+* Enhanced error handling for ArrayLike dimension mismatches
+* Added new network visualization examples
+* Improved code cell execution and output clarity
+* Added comprehensive Component Tutorial
+* Documented component usage and best practices
+
 ### Testing & Validation
 
 * Added comprehensive media compatibility tests
@@ -192,6 +201,8 @@ Schema_skrf/
     * Reference designs (splitters, couplers)
 * Example/
   * Comparison.ipynb (Component comparison examples)
+  * Network_Tutorial.ipynb (Network analysis and visualization examples)
+  * Component_Tutorial.ipynb (Component usage and implementation guide)
 * Src/
   * Models/
     * Circuit.py (Circuit composition and validation)
