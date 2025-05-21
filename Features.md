@@ -2,6 +2,13 @@
 
 ## Recent Updates
 
+### JSON Schema Compatibility
+
+* Replaced native complex type with ComplexNumber class for JSON Schema compatibility
+* Updated z0 and z0_port fields to use ComplexNumber type
+* Modified example values in Component and Media models
+* Improved Circuit model serialization for JSON Schema generation
+
 ### Tutorial Enhancements
 
 * Updated Network Tutorial with Python 3.12.0 compatibility
@@ -18,7 +25,7 @@
 * Improved test stability for simulation components
 * Added validation for component parameters and frequency matching
 
-### Media Support
+### Media Implementation
 
 * Added comprehensive MicrostripLine implementation
 * Enhanced media validation and parameter checks
@@ -60,8 +67,7 @@
   * Frequency point matching
   * Port connection verification
 
-
-### Components
+### Circuit Components
 
 #### RLGC Components
 
@@ -70,6 +76,7 @@
   * Inductor (L): Inductance
   * Conductor (G): Conductance
   * Capacitor (C): Capacitance
+
 * Features
   * Frequency-dependent behavior
   * Default 50Ω impedance
@@ -111,7 +118,7 @@
 
 ## Media Support
 
-### Transmission Lines
+### Transmission Line Types
 
 * Types
   * Coaxial Line
@@ -192,7 +199,9 @@
   * Attribute preservation
 
 ## Project Structure
+
 Schema_skrf/
+
 * Data/
   * Touchstone/
     * Calibration data (Agilent_E5071B.s4p, RS_ZNB8.s4p)

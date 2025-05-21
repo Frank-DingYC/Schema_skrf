@@ -1,6 +1,6 @@
 from pydantic.v1 import Field, validator
 from tidy3d.components.base import Tidy3dBaseModel
-from tidy3d.components.types import ArrayComplex1D, ArrayComplex2D, ArrayComplex3D, ArrayFloat1D
+from tidy3d.components.types import ArrayComplex1D, ArrayComplex2D, ArrayComplex3D, ArrayFloat1D, ComplexNumber
 import skrf as rf
 import numpy as np
 from typing import List, Optional, Any, Union
@@ -17,13 +17,11 @@ class Network(Tidy3dBaseModel):
         ...,
         title="S-Parameters",
         description="S-parameter matrix (n_freqs x n_ports x n_ports, complex)",
-        example=[[[2+1j, 1+2j], [1+2j, 2-1j]], [[2+1j, 1+2j], [1+2j, 2-1j]]]
     )
     z0: Union[ArrayComplex2D, ArrayComplex1D] = Field(
         ...,
         title="Port Impedance",
         description="Impedance for each port at each frequency (n_freqs x n_ports, complex)",
-        example=[[50.0+1j, 50.0+0j], [50.0+0j, 50.0+1j]]
     )
     name: Optional[str] = Field(
         None,
@@ -147,3 +145,9 @@ def fit_frequency(snp: rf.Network, frequency_range: rf.Frequency, **kwargs) -> r
     s_interpolated = interpolate_s(snp, frequency_range, **kwargs)
     z0_interpolated = interpolate_z0(snp.z0, snp_range, frequency_range)
     return rf.Network(frequency=frequency_range, s=s_interpolated, z0=z0_interpolated, name=snp.name)
+
+if __name__ == "__main__":
+    import json
+    with open('network.json','w') as f:
+        network_schema = Network.schema()
+        json.dump(network_schema, f, indent=4)

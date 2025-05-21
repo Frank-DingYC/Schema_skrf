@@ -1,5 +1,6 @@
 from pydantic.v1 import Field, validator
 from tidy3d.components.base import Tidy3dBaseModel
+from tidy3d.components.types import ComplexNumber
 from typing import Dict, List, Union, Tuple, Any, Optional
 import Src.Models.Network as Network
 import Src.Models.Component as Component
@@ -19,8 +20,12 @@ class Circuit(Tidy3dBaseModel):
         title="Networks",
         description="Dictionary of networks/components keyed by their names",
         example={
-            'ntw1': Network.Network(frequency=np.array([1e9]), s_parameters=np.array([[[0.1+0.2j]]]), z0=np.array([[50.0+0j]]), nports=1),
-            'r1': Component.R(r=50, frequency=np.array([1e9]), z0=50.0)
+            'r1': {
+                'type': 'R',
+                'r': 50,
+                'frequency': [1e9],
+                'z0': {'real': 50, 'imag': 0}
+            }
         }
     )
     connections: List[List[ConnectionType]] = Field(
