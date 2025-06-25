@@ -65,12 +65,14 @@ class AbstractComponent(Tidy3dBaseModel):
             raise ValueError("z0_port must be specified")
         if media is None:
             frequency = rf.Frequency.from_f(self.frequency,unit='Hz')
-            media = rf.media.DefinedGammaZ0(frequency=frequency, z0=self.z0, z0_port=self.z0_port)
+            z0=self.z0.real+1j*self.z0.imag
+            z0_port=self.z0_port.real+1j*self.z0_port.imag
+            media = rf.media.DefinedGammaZ0(frequency=frequency, z0=z0, z0_port=z0_port)
         else:
             media = media.updated_copy(
                 frequency=self.frequency,
-                z0=self.z0,
-                z0_port=self.z0_port
+                z0=self.z0.real+1j*self.z0.imag,
+                z0_port=self.z0_port.real+1j*self.z0_port.imag
             ).to_rf_media()
         return media
 

@@ -105,9 +105,10 @@ class TestR:
 
     def test_r_impedance(self):
         # Test with default z0
+        from tidy3d.components.types import ComplexNumber
         r_model = R(r=100.0, frequency=list(np.linspace(1e9, 2e9, 100)))
-        assert r_model.z0 == 50
-        assert r_model.z0_port == 50
+        assert r_model.z0 == ComplexNumber(real=50, imag=0)
+        assert r_model.z0_port == ComplexNumber(real=50, imag=0)
         # Default z0 should be 50 ohms if not specified
         network = r_model.to_network()
         assert np.all(network.z0 == 50.0)
@@ -116,7 +117,7 @@ class TestR:
         z0_custom = 75+5j
         r_model = R(r=100.0, frequency=list(np.linspace(1e9, 2e9, 100)), z0=z0_custom)
         assert r_model.z0 == z0_custom
-        assert r_model.z0_port == 50
+        assert r_model.z0_port == ComplexNumber(real=50, imag=0)
         network = r_model.to_network()
         assert np.all(network.z0 == 50)
 
@@ -394,11 +395,11 @@ class TestSplitter:
         assert network.s.shape == (len(base_params['frequency']), nports, nports)
         
         # Extract real part of Z0 (assuming lossless)
-        z0 =[splitter.z0] * nports
+        z0 =[splitter.z0.as_complex] * nports
         
         # Theoretical calculations
         s_matrix = network.s
-        z0_sum = 1/z0[0] * nports
+        z0_sum = 1/z0[0].real * nports
             
         # Verify off-diagonal elements (transmission)
         for i in range(nports):
@@ -551,5 +552,5 @@ class TestOpen:
         # Verify S-parameters (should be 1 for perfect open)
         assert np.allclose(network.s, [[1, 0], [0, 1]])
 if __name__ == '__main__':
-    test = TestR()
-    test.test_r_frequency_mismatch()
+    test = TestSplitter()
+    test.test_splitter_ports(base_params(), nports=3)

@@ -2,6 +2,13 @@
 
 ## Recent Updates
 
+### ComplexNumber Fixes & Test Stability (December 2024)
+
+* Fixed ComplexNumber arithmetic errors with scikit-rf integration
+* All 141 tests now pass successfully
+* Resolved TypeError issues in component calculations
+* Enhanced pytest framework compatibility
+
 ### JSON Schema Compatibility
 
 * Replaced native complex type with ComplexNumber class for JSON Schema compatibility

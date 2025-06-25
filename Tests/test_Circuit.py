@@ -236,5 +236,4 @@ class TestCircuit:
 
 if __name__ == "__main__":
     test = TestCircuit()
-    sample = sample_networks()
-    test.test_circuit_conversion(sample)
+    test.test_rlgc_circuit(rlgc_circuit=rlgc_circuit(base_params()))

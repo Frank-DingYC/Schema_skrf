@@ -330,7 +330,7 @@ class TestMicrostripLine(BaseMediaTest):
             'disp': 'kirschningjansen',
             'tand': 0.0,
             'rho': 1.68e-8,
-            'rough': None,
+            'rough': 0.15e-6,
             'diel': 'djordjevicsvensson',
             'f_low': 1e3,
             'f_high': 1e12,
@@ -488,3 +488,6 @@ class TestDistributedRLGC(BaseMediaTest):
             params = basic_media.dict()
             params.update(invalid_params)
             DistributedRLGC(**params)
+if __name__ == '__main__':
+    test = TestMicrostripLine()
+    test.test_default_initialization(test.basic_media(np.array([1e9, 5e9, 10e9])), test.default_params())
